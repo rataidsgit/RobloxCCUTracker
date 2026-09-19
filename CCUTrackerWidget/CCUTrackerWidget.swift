@@ -153,9 +153,18 @@ struct CCUTrackerWidgetView: View {
 
                 Text("CCU")
                     .font(.caption)
+
+                if entry.updatedAt != .distantPast {
+
+                    Text(
+                        entry.updatedAt,
+                        style: .relative
+                    )
+                    .font(.caption2)
                     .foregroundStyle(
                         .secondary
                     )
+                }
             }
             .frame(
                 maxWidth: .infinity,

@@ -2,20 +2,39 @@ import SwiftUI
 
 struct ContentView: View {
 
-    @StateObject private var sourceStore =
-        SourceStore.shared
+    @StateObject
+    private var sourceStore = SourceStore.shared
 
     @State private var games: [RobloxGame] = []
+
     @State private var isLoading = false
-    @State private var errorMessage: String?
+
+    @State private var errorMessage:
+        String?
 
     @State private var showingSources = false
 
+    @State private var lastUpdated:
+        Date?
+
+    // MARK: - Computed Properties
+
     private var totalCCU: Int {
+
         games.reduce(0) {
             $0 + $1.currentCCU
         }
     }
+
+    private var sortedGames:
+        [RobloxGame] {
+
+        games.sorted {
+            $0.currentCCU > $1.currentCCU
+        }
+    }
+
+    // MARK: - Body
 
     var body: some View {
 
@@ -23,65 +42,28 @@ struct ContentView: View {
 
             Group {
 
-                if isLoading {
+                if isLoading && games.isEmpty {
 
                     ProgressView(
                         "Loading Roblox games..."
                     )
-                }
 
-                else if let errorMessage {
+                } else if let errorMessage,
+                          games.isEmpty {
 
-                    VStack(spacing: 12) {
-
-                        Image(
-                            systemName: "exclamationmark.triangle"
-                        )
-                        .font(.largeTitle)
-
-                        Text("Couldn't load games")
-                            .font(.headline)
-
-                        Text(errorMessage)
-                            .font(.caption)
-                            .foregroundStyle(
-                                .secondary
-                            )
-                            .multilineTextAlignment(
-                                .center
-                            )
-
-                        Button("Retry") {
-
-                            Task {
-                                await loadGames()
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                    .padding()
-                }
-
-                else if games.isEmpty {
-
-                    ContentUnavailableView(
-                        "No Games",
-                        systemImage:
-                            "gamecontroller",
-                        description:
-                            Text(
-                                "Add a Roblox User, Group, or Game ID."
-                            )
+                    errorView(
+                        message: errorMessage
                     )
-                }
 
-                else {
+                } else {
 
                     gameList
                 }
             }
 
-            .navigationTitle("Roblox CCU")
+            .navigationTitle(
+                "Roblox CCU"
+            )
 
             .toolbar {
 
@@ -96,31 +78,35 @@ struct ContentView: View {
                     } label: {
 
                         Image(
-                            systemName: "gearshape"
+                            systemName:
+                                "gearshape"
                         )
                     }
                 }
             }
 
+            .sheet(
+                isPresented:
+                    $showingSources
+            ) {
+
+                SourcesView()
+            }
+
             .task {
 
-                await loadGames()
+                // Only load automatically if
+                // we don't already have data.
+
+                if games.isEmpty {
+
+                    await loadGames()
+                }
             }
 
             .refreshable {
 
                 await loadGames()
-            }
-
-            .sheet(
-                isPresented: $showingSources
-            ) {
-
-                SourcesView {
-                    Task {
-                        await loadGames()
-                    }
-                }
             }
         }
     }
@@ -133,125 +119,222 @@ struct ContentView: View {
 
             Section {
 
-                VStack(spacing: 4) {
+                VStack(
+                    alignment: .leading,
+                    spacing: 4
+                ) {
 
                     Text(
                         totalCCU.formatted()
                     )
                     .font(
                         .system(
-                            size: 42,
+                            size: 36,
                             weight: .bold
                         )
                     )
                     .monospacedDigit()
 
-                    Text("TOTAL CCU")
-                        .font(.caption)
+                    Text("Total CCU")
+                        .font(.subheadline)
                         .foregroundStyle(
                             .secondary
                         )
+
+                    HStack(
+                        spacing: 6
+                    ) {
+
+                        if isLoading {
+
+                            ProgressView()
+                                .controlSize(
+                                    .mini
+                                )
+
+                            Text(
+                                "Refreshing..."
+                            )
+
+                        } else if let lastUpdated {
+
+                            Image(
+                                systemName:
+                                    "clock"
+                            )
+
+                            Text(
+                                "Updated "
+                                + lastUpdated,
+                                style: .relative
+                            )
+                        }
+
+                        Spacer()
+                    }
+                    .font(.caption)
+                    .foregroundStyle(
+                        .secondary
+                    )
+                    .padding(
+                        .top,
+                        4
+                    )
                 }
-                .frame(
-                    maxWidth: .infinity
-                )
                 .padding(
                     .vertical,
-                    12
+                    8
                 )
+
             }
 
-            Section("Games") {
+            Section(
+                "Games"
+            ) {
 
                 ForEach(
-                    games.sorted {
-                        $0.currentCCU >
-                        $1.currentCCU
-                    }
+                    sortedGames
                 ) { game in
 
                     HStack {
 
                         VStack(
                             alignment: .leading,
-                            spacing: 4
+                            spacing: 3
                         ) {
 
                             Text(game.name)
-                                .font(.headline)
+                                .font(
+                                    .headline
+                                )
 
                             if let creatorName =
                                 game.creatorName {
 
-                                Text(creatorName)
-                                    .font(.caption)
-                                    .foregroundStyle(
-                                        .secondary
-                                    )
+                                Text(
+                                    creatorName
+                                )
+                                .font(
+                                    .caption
+                                )
+                                .foregroundStyle(
+                                    .secondary
+                                )
                             }
                         }
 
                         Spacer()
 
                         Text(
-                            game.currentCCU.formatted()
+                            game.currentCCU
+                                .formatted()
                         )
-                        .font(.headline)
+                        .font(
+                            .system(
+                                size: 17,
+                                weight: .semibold
+                            )
+                        )
                         .monospacedDigit()
                     }
+                    .padding(
+                        .vertical,
+                        3
+                    )
                 }
             }
         }
     }
 
-    // MARK: - Load
+    // MARK: - Error
 
+    private func errorView(
+        message: String
+    ) -> some View {
+
+        VStack(
+            spacing: 12
+        ) {
+
+            Image(
+                systemName:
+                    "exclamationmark.triangle"
+            )
+            .font(.largeTitle)
+
+            Text(
+                "Couldn't load games"
+            )
+            .font(.headline)
+
+            Text(message)
+                .font(.subheadline)
+                .foregroundStyle(
+                    .secondary
+                )
+                .multilineTextAlignment(
+                    .center
+                )
+
+            Button("Retry") {
+
+                Task {
+                    await loadGames()
+                }
+            }
+            .buttonStyle(
+                .borderedProminent
+            )
+        }
+        .padding()
+    }
+
+    // MARK: - Load Games
+
+    @MainActor
     private func loadGames() async {
 
-        await MainActor.run {
+        guard !isLoading else {
+            return
+        }
+
+        isLoading = true
+
+        errorMessage = nil
+
+        do {
+
+            let discovered =
+                try await
+                    GameDiscoveryService.shared
+                    .discoverGames(
+                        from:
+                            sourceStore.sources
+                    )
+
+            let refreshed =
+                try await
+                    GameDiscoveryService.shared
+                    .refreshCCU(
+                        for: discovered
+                    )
 
             games = refreshed
+
+            lastUpdated = Date()
 
             SharedDataStore.shared.save(
                 games: refreshed
             )
 
             isLoading = false
-        }
-
-        do {
-
-            let discovered =
-                try await GameDiscoveryService.shared
-                    .discoverGames(
-                        from: sourceStore.sources
-                    )
-
-            let refreshed =
-                try await GameDiscoveryService.shared
-                    .refreshCCU(
-                        for: discovered
-                    )
-
-            await MainActor.run {
-
-                games = refreshed
-                isLoading = false
-            }
 
         } catch {
 
-            await MainActor.run {
+            errorMessage =
+                error.localizedDescription
 
-                errorMessage =
-                    error.localizedDescription
-
-                isLoading = false
-            }
+            isLoading = false
         }
     }
-}
-
-#Preview {
-    ContentView()
 }
