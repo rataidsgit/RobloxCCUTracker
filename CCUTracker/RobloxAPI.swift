@@ -334,12 +334,30 @@ private struct RobloxCreatorResponse: Codable {
 
 // MARK: - Errors
 
-enum RobloxAPIError: Error {
+enum RobloxAPIError: LocalizedError {
 
     case invalidResponse
     case httpError(Int)
     case gameNotFound
     case decodingError(String)
+
+    var errorDescription: String? {
+
+        switch self {
+
+        case .invalidResponse:
+            return "Roblox returned an invalid response."
+
+        case .httpError(let statusCode):
+            return "Roblox API returned HTTP \(statusCode)."
+
+        case .gameNotFound:
+            return "The requested Roblox game could not be found."
+
+        case .decodingError(let message):
+            return "Could not read Roblox's response:\n\(message)"
+        }
+    }
 }
 
 
