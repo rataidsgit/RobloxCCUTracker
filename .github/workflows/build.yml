@@ -10,17 +10,70 @@ jobs:
     runs-on: macos-latest
 
     steps:
+
+      # -----------------------------
+      # Checkout repository
+      # -----------------------------
+
       - name: Checkout repository
         uses: actions/checkout@v4
+
+
+      # -----------------------------
+      # Install XcodeGen
+      # -----------------------------
 
       - name: Install XcodeGen
         run: brew install xcodegen
 
+
+      # -----------------------------
+      # Generate Xcode project
+      # -----------------------------
+
       - name: Generate Xcode project
         run: xcodegen generate
 
+
+      # -----------------------------
+      # Show Xcode version
+      # -----------------------------
+
       - name: Show Xcode version
-        run: xcodebuild -version
+        run: |
+          xcodebuild -version
+
+
+      # -----------------------------
+      # Check signing environment
+      # -----------------------------
+
+      - name: Check signing environment
+        run: |
+          echo "========================================"
+          echo "AVAILABLE CODE SIGNING IDENTITIES"
+          echo "========================================"
+
+          security find-identity -v -p codesigning || true
+
+          echo ""
+          echo "========================================"
+          echo "XCODE INFORMATION"
+          echo "========================================"
+
+          xcodebuild -version
+
+          echo ""
+          echo "========================================"
+          echo "DEVELOPER DIRECTORY"
+          echo "========================================"
+
+          xcode-select -p
+
+
+      # -----------------------------
+      # Build iOS app
+      # -----------------------------
 
       - name: Build project
         run: |
@@ -30,11 +83,4 @@ jobs:
             -sdk iphonesimulator \
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
-            build \
-            | tee build.log
-
-      - name: Show build errors
-        if: failure()
-        run: |
-          echo "===== VALIDATION / BUILD ERRORS ====="
-          grep -B 5 -A 15 -E "error:|warning:|Validation|validate" build.log || true
+            build
