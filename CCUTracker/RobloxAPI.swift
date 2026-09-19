@@ -367,7 +367,7 @@ private extension Array {
 
     func chunked(
         into size: Int
-    ) -> [[Element] {
+    ) -> [[Element]] {
 
         guard size > 0 else {
             return [self]
