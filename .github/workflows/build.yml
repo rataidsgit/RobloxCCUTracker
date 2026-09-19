@@ -13,5 +13,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
       - name: Show Xcode version
         run: xcodebuild -version
+
+      - name: Build project
+        run: |
+          xcodebuild \
+            -project RobloxCCUTracker.xcodeproj \
+            -scheme CCUTracker \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            build

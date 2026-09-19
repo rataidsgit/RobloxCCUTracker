@@ -1,0 +1,33 @@
+name: RobloxCCUTracker
+
+options:
+  bundleIdPrefix: com.robloxccutracker
+
+targets:
+
+  CCUTracker:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+
+    sources:
+      - path: CCUTracker
+
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.robloxccutracker.app
+        INFOPLIST_KEY_CFBundleDisplayName: Roblox CCU
+        SWIFT_VERSION: 5.0
+
+  CCUTrackerWidget:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+
+    sources:
+      - path: CCUTrackerWidget
+
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.robloxccutracker.app.widget
+        SWIFT_VERSION: 5.0
