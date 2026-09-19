@@ -1,125 +1,137 @@
-name: Test Apple Developer Tooling
+name: Build iOS App
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
-  developer-tooling-test:
+  build:
     runs-on: macos-latest
 
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
 
       - name: Show Xcode version
         run: |
           echo "========================================"
-          echo "XCODE"
+          echo "XCODE VERSION"
           echo "========================================"
 
           xcodebuild -version
 
           echo ""
-          xcode-select -p
-
-      - name: Check Xcode command line tools
-        run: |
           echo "========================================"
-          echo "XCODE COMMAND LINE TOOLS"
+          echo "XCODE PATH"
           echo "========================================"
 
           xcode-select -p
-          xcodebuild -showsdks
 
-      - name: Check available Xcode signing commands
+      - name: Check code signing identities
         run: |
           echo "========================================"
-          echo "SIGNING TOOLING"
+          echo "CODE SIGNING IDENTITIES"
           echo "========================================"
 
-          echo "codesign:"
-          which codesign
-          codesign -h | head -5
+          security find-identity -v -p codesigning || true
 
           echo ""
-          echo "security:"
-          which security
-          security -h | head -20
+          echo "Raw signing identities:"
+          security find-identity -v -p codesigning \
+            | grep "valid identities found" || true
+
+      - name: Check provisioning profiles
+        run: |
+          echo "========================================"
+          echo "PROVISIONING PROFILES"
+          echo "========================================"
+
+          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+
+          if [ -d "$PROFILE_DIR" ]; then
+            echo "Provisioning profile directory exists:"
+            echo "$PROFILE_DIR"
+            echo ""
+
+            ls -la "$PROFILE_DIR"
+
+            echo ""
+            echo "Provisioning profiles:"
+            find "$PROFILE_DIR" \
+              -maxdepth 1 \
+              -type f \
+              -name "*.mobileprovision" \
+              -print || true
+          else
+            echo "No provisioning profile directory exists."
+          fi
+
+      - name: Check Xcode account tools
+        run: |
+          echo "========================================"
+          echo "XCODE ACCOUNT TOOLS"
+          echo "========================================"
+
+          echo "Available Xcode-related commands:"
+          echo ""
+
+          command -v xcodebuild || true
+          command -v xcrun || true
+          command -v xcdevice || true
 
           echo ""
-          echo "xcodebuild:"
-          which xcodebuild
+          echo "========================================"
+          echo "XCDEVICE HELP"
+          echo "========================================"
 
-      - name: Check Xcode provisioning capabilities
+          xcrun xcdevice help 2>&1 | head -100 || true
+
+          echo ""
+          echo "========================================"
+          echo "XCODE ACCOUNT-RELATED PREFERENCES"
+          echo "========================================"
+
+          defaults read com.apple.dt.Xcode 2>/dev/null \
+            | grep -i -E "account|team|provision" \
+            | head -100 || true
+
+      - name: Check Xcode provisioning options
         run: |
           echo "========================================"
           echo "XCODE PROVISIONING OPTIONS"
           echo "========================================"
 
-          xcodebuild -help | grep -i -E \
-            "signing|provision|team|certificate|export" \
+          xcodebuild -help 2>&1 \
+            | grep -A 20 -B 5 \
+              -E "allowProvisioningUpdates|allowProvisioningDeviceRegistration|authenticationKeyPath|authenticationKeyID|authenticationKeyIssuerID" \
             || true
 
-      - name: Check local signing state
+      - name: Check project
         run: |
           echo "========================================"
-          echo "LOCAL SIGNING STATE"
+          echo "PROJECT FILES"
           echo "========================================"
 
-          echo "Code signing identities:"
-          security find-identity -v -p codesigning || true
+          echo "Generated project:"
+          ls -la RobloxCCUTracker.xcodeproj
 
           echo ""
-          echo "Provisioning profiles:"
-          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
-
-          if [ -d "$PROFILE_DIR" ]; then
-            find "$PROFILE_DIR" -maxdepth 1 -type f -print
-          else
-            echo "None"
-          fi
-
-      - name: Check Apple development environment
-        run: |
-          echo "========================================"
-          echo "DEVELOPMENT ENVIRONMENT"
-          echo "========================================"
-
-          echo "Developer directory:"
-          xcode-select -p
-
-          echo ""
-          echo "Mac architecture:"
-          uname -m
-
-          echo ""
-          echo "Available developer tools:"
-          xcodebuild -version
-
-      - name: Generate project
-        run: |
-          brew install xcodegen
-          xcodegen generate
-
-      - name: Inspect signing settings
-        run: |
-          echo "========================================"
-          echo "PROJECT SIGNING SETTINGS"
-          echo "========================================"
-
+          echo "Available schemes:"
           xcodebuild \
             -project RobloxCCUTracker.xcodeproj \
-            -scheme CCUTracker \
-            -showBuildSettings \
-            | grep -E \
-              "CODE_SIGN|DEVELOPMENT_TEAM|PROVISIONING|PRODUCT_BUNDLE_IDENTIFIER" \
-            || true
+            -list
 
-      - name: Test unsigned simulator build
+      - name: Build project
         run: |
           echo "========================================"
-          echo "BUILD TEST"
+          echo "BUILDING IOS SIMULATOR"
           echo "========================================"
 
           xcodebuild \
@@ -129,15 +141,3 @@ jobs:
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
             build
-
-      - name: Finish
-        if: always()
-        run: |
-          echo ""
-          echo "========================================"
-          echo "TEST COMPLETE"
-          echo "========================================"
-          echo ""
-          echo "No Apple credentials were supplied."
-          echo "No Apple password was used."
-          echo "No 2FA code was used."
