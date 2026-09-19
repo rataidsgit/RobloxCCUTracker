@@ -30,4 +30,11 @@ jobs:
             -sdk iphonesimulator \
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
-            build
+            build \
+            | tee build.log
+
+      - name: Show build errors
+        if: failure()
+        run: |
+          echo "===== VALIDATION / BUILD ERRORS ====="
+          grep -B 5 -A 15 -E "error:|warning:|Validation|validate" build.log || true
