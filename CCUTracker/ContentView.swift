@@ -210,8 +210,13 @@ struct ContentView: View {
 
         await MainActor.run {
 
-            isLoading = true
-            errorMessage = nil
+            games = refreshed
+
+            SharedDataStore.shared.save(
+                games: refreshed
+            )
+
+            isLoading = false
         }
 
         do {

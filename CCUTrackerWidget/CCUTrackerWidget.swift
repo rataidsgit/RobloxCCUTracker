@@ -2,88 +2,196 @@ import WidgetKit
 import SwiftUI
 
 struct CCUEntry: TimelineEntry {
+
     let date: Date
     let totalCCU: Int
+    let updatedAt: Date
 }
 
 struct Provider: TimelineProvider {
 
-    func placeholder(in context: Context) -> CCUEntry {
+    private let store =
+        SharedWidgetDataStore()
+
+    func placeholder(
+        in context: Context
+    ) -> CCUEntry {
+
         CCUEntry(
             date: Date(),
-            totalCCU: 1795
+            totalCCU: 0,
+            updatedAt: .distantPast
         )
     }
 
     func getSnapshot(
         in context: Context,
-        completion: @escaping (CCUEntry) -> Void
+        completion:
+            @escaping (CCUEntry) -> Void
     ) {
+
+        let data =
+            store.load()
+
         completion(
             CCUEntry(
                 date: Date(),
-                totalCCU: 1795
+                totalCCU: data.totalCCU,
+                updatedAt: data.updatedAt
             )
         )
     }
 
     func getTimeline(
         in context: Context,
-        completion: @escaping (Timeline<CCUEntry>) -> Void
+        completion:
+            @escaping (
+                Timeline<CCUEntry>
+            ) -> Void
     ) {
-        let entry = CCUEntry(
-            date: Date(),
-            totalCCU: 1795
-        )
 
-        let nextUpdate = Calendar.current.date(
-            byAdding: .minute,
-            value: 15,
-            to: Date()
-        )!
+        let data =
+            store.load()
 
-        let timeline = Timeline(
-            entries: [entry],
-            policy: .after(nextUpdate)
-        )
+        let entry =
+            CCUEntry(
+                date: Date(),
+                totalCCU: data.totalCCU,
+                updatedAt: data.updatedAt
+            )
+
+        let nextUpdate =
+            Calendar.current.date(
+                byAdding: .minute,
+                value: 15,
+                to: Date()
+            )!
+
+        let timeline =
+            Timeline(
+                entries: [entry],
+                policy: .after(nextUpdate)
+            )
 
         completion(timeline)
     }
 }
 
-struct CCUTrackerWidgetView: View {
 
-    var entry: Provider.Entry
+// MARK: - Widget Shared Storage
 
-    var body: some View {
-        VStack(alignment: .leading) {
-            Text("🎮")
-                .font(.title2)
+private final class SharedWidgetDataStore {
 
-            Text("\(entry.totalCCU)")
-                .font(.system(size: 22, weight: .bold))
+    private let suiteName =
+        "group.com.robloxccutracker"
 
-            Text("CCU")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+    private let dataKey =
+        "sharedCCUData"
+
+    func load() -> SharedCCUData {
+
+        guard let encoded =
+                UserDefaults(
+                    suiteName: suiteName
+                )?.data(
+                    forKey: dataKey
+                )
+        else {
+
+            return .empty
         }
-        .containerBackground(.background, for: .widget)
+
+        do {
+
+            return try JSONDecoder()
+                .decode(
+                    SharedCCUData.self,
+                    from: encoded
+                )
+
+        } catch {
+
+            return .empty
+        }
     }
 }
 
+
+// MARK: - Widget View
+
+struct CCUTrackerWidgetView: View {
+
+    var entry: CCUEntry
+
+    var body: some View {
+
+        VStack(
+            alignment: .leading,
+            spacing: 2
+        ) {
+
+            Text("ROBLOX")
+                .font(
+                    .caption2
+                )
+                .fontWeight(
+                    .semibold
+                )
+
+            Text(
+                entry.totalCCU.formatted()
+            )
+            .font(
+                .system(
+                    size: 22,
+                    weight: .bold
+                )
+            )
+            .monospacedDigit()
+
+            Text("CCU")
+                .font(
+                    .caption
+                )
+                .foregroundStyle(
+                    .secondary
+                )
+        }
+        .containerBackground(
+            .background,
+            for: .widget
+        )
+    }
+}
+
+
+// MARK: - Widget
+
 struct CCUTrackerWidget: Widget {
 
-    let kind = "CCUTrackerWidget"
+    let kind =
+        "CCUTrackerWidget"
 
     var body: some WidgetConfiguration {
+
         StaticConfiguration(
             kind: kind,
             provider: Provider()
         ) { entry in
-            CCUTrackerWidgetView(entry: entry)
+
+            CCUTrackerWidgetView(
+                entry: entry
+            )
         }
-        .configurationDisplayName("Roblox CCU")
-        .description("Shows your combined Roblox CCU.")
+
+        .configurationDisplayName(
+            "Roblox CCU"
+        )
+
+        .description(
+            "Shows your combined Roblox CCU."
+        )
+
         .supportedFamilies([
             .accessoryCircular,
             .accessoryRectangular,
@@ -92,10 +200,13 @@ struct CCUTrackerWidget: Widget {
     }
 }
 
+
 @main
-struct CCUTrackerWidgetBundle: WidgetBundle {
+struct CCUTrackerWidgetBundle:
+    WidgetBundle {
 
     var body: some Widget {
+
         CCUTrackerWidget()
     }
 }

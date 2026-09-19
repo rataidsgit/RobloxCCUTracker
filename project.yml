@@ -22,13 +22,22 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Roblox CCU
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        CODE_SIGN_ENTITLEMENTS: CCUTracker/CCUTracker.entitlements
 
-  CCUTrackerWidget:
+    CCUTrackerWidget:
     type: app-extension
     platform: iOS
 
     sources:
       - path: CCUTrackerWidget
+      - path: CCUTracker/SharedData.swift
+
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.robloxccutracker.app.widget
+        SWIFT_VERSION: 5.0
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_ENTITLEMENTS: CCUTrackerWidget/CCUTrackerWidget.entitlements
 
     settings:
       base:
