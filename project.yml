@@ -19,9 +19,12 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.robloxccutracker.app
         SWIFT_VERSION: 5.0
         GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1"
+
         INFOPLIST_KEY_CFBundleDisplayName: Roblox CCU
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+
         CODE_SIGN_ENTITLEMENTS: CCUTracker/CCUTracker.entitlements
 
         INFOPLIST_KEY_CFBundleURLTypes: |
@@ -44,7 +47,8 @@ targets:
             <string>fetch</string>
           </array>
 
-    CCUTrackerWidget:
+
+  CCUTrackerWidget:
     type: app-extension
     platform: iOS
 
@@ -57,10 +61,6 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.robloxccutracker.app.widget
         SWIFT_VERSION: 5.0
         GENERATE_INFOPLIST_FILE: YES
-        CODE_SIGN_ENTITLEMENTS: CCUTrackerWidget/CCUTrackerWidget.entitlements
+        TARGETED_DEVICE_FAMILY: "1"
 
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.robloxccutracker.app.widget
-        SWIFT_VERSION: 5.0
-        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_ENTITLEMENTS: CCUTrackerWidget/CCUTrackerWidget.entitlements
