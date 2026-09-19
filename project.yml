@@ -24,6 +24,16 @@ targets:
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         CODE_SIGN_ENTITLEMENTS: CCUTracker/CCUTracker.entitlements
 
+        INFOPLIST_KEY_CFBundleURLTypes: |
+          <array>
+            <dict>
+              <key>CFBundleURLSchemes</key>
+              <array>
+                <string>robloxccu</string>
+              </array>
+            </dict>
+          </array>
+
     CCUTrackerWidget:
     type: app-extension
     platform: iOS

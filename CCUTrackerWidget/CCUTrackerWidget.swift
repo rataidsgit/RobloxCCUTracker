@@ -125,37 +125,43 @@ struct CCUTrackerWidgetView: View {
 
     var body: some View {
 
-        VStack(
-            alignment: .leading,
-            spacing: 2
+        Link(
+            destination: URL(
+                string: "robloxccu://"
+            )!
         ) {
 
-            Text("ROBLOX")
-                .font(
-                    .caption2
-                )
-                .fontWeight(
-                    .semibold
-                )
+            VStack(
+                alignment: .leading,
+                spacing: 2
+            ) {
 
-            Text(
-                entry.totalCCU.formatted()
-            )
-            .font(
-                .system(
-                    size: 22,
-                    weight: .bold
-                )
-            )
-            .monospacedDigit()
+                Text("ROBLOX")
+                    .font(.caption2)
+                    .fontWeight(.semibold)
 
-            Text("CCU")
+                Text(
+                    entry.totalCCU.formatted()
+                )
                 .font(
-                    .caption
+                    .system(
+                        size: 22,
+                        weight: .bold
+                    )
                 )
-                .foregroundStyle(
-                    .secondary
-                )
+                .monospacedDigit()
+
+                Text("CCU")
+                    .font(.caption)
+                    .foregroundStyle(
+                        .secondary
+                    )
+            }
+            .frame(
+                maxWidth: .infinity,
+                maxHeight: .infinity,
+                alignment: .leading
+            )
         }
         .containerBackground(
             .background,
