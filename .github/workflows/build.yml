@@ -40,7 +40,7 @@ jobs:
 
           echo "codesign:"
           which codesign
-          codesign --version
+          codesign -h | head -5
 
           echo ""
           echo "security:"
