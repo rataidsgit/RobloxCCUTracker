@@ -2,9 +2,14 @@ import Foundation
 import WidgetKit
 
 struct SharedGame: Codable, Identifiable {
+
     let id: Int
     let name: String
     let currentCCU: Int
+
+    var identity: Int {
+        id
+    }
 }
 
 struct SharedCCUData: Codable {
@@ -13,16 +18,18 @@ struct SharedCCUData: Codable {
     let totalCCU: Int
     let updatedAt: Date
 
-    static let empty = SharedCCUData(
-        games: [],
-        totalCCU: 0,
-        updatedAt: .distantPast
-    )
+    static let empty =
+        SharedCCUData(
+            games: [],
+            totalCCU: 0,
+            updatedAt: .distantPast
+        )
 }
 
 final class SharedDataStore {
 
-    static let shared = SharedDataStore()
+    static let shared =
+        SharedDataStore()
 
     private let suiteName =
         "group.com.robloxccutracker"
@@ -32,38 +39,59 @@ final class SharedDataStore {
 
     private init() {}
 
-    func save(games: [RobloxGame]) {
+    // MARK: - Save
+
+    func save(
+        games: [RobloxGame]
+    ) {
 
         let sharedGames =
             games.map {
+
                 SharedGame(
                     id: $0.id,
                     name: $0.name,
-                    currentCCU: $0.currentCCU
+                    currentCCU:
+                        $0.currentCCU
                 )
             }
 
-        let total =
+        let totalCCU =
             sharedGames.reduce(0) {
                 $0 + $1.currentCCU
             }
 
-        let data = SharedCCUData(
-            games: sharedGames,
-            totalCCU: total,
-            updatedAt: Date()
+        let data =
+            SharedCCUData(
+                games: sharedGames,
+                totalCCU: totalCCU,
+                updatedAt: Date()
+            )
+
+        save(
+            data: data
         )
+    }
+
+    // MARK: - Save Shared Data
+
+    func save(
+        data: SharedCCUData
+    ) {
 
         do {
 
             let encoded =
-                try JSONEncoder().encode(data)
+                try JSONEncoder()
+                    .encode(data)
 
             UserDefaults(
-                suiteName: suiteName
+                suiteName:
+                    suiteName
             )?.set(
                 encoded,
-                forKey: dataKey
+                forKey:
+                    dataKey
             )
 
         } catch {
@@ -74,8 +102,46 @@ final class SharedDataStore {
             )
         }
 
-        WidgetCenter.shared.reloadTimelines(
-            ofKind: "CCUTrackerWidget"
-        )
+        WidgetCenter.shared
+            .reloadTimelines(
+                ofKind:
+                    "CCUTrackerWidget"
+            )
+    }
+
+    // MARK: - Load
+
+    func load() -> SharedCCUData {
+
+        guard let encoded =
+                UserDefaults(
+                    suiteName:
+                        suiteName
+                )?.data(
+                    forKey:
+                        dataKey
+                )
+        else {
+
+            return .empty
+        }
+
+        do {
+
+            return try JSONDecoder()
+                .decode(
+                    SharedCCUData.self,
+                    from: encoded
+                )
+
+        } catch {
+
+            print(
+                "Failed to decode shared CCU data:",
+                error
+            )
+
+            return .empty
+        }
     }
 }

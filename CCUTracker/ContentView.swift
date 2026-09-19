@@ -17,6 +17,8 @@ struct ContentView: View {
     @State private var lastUpdated:
         Date?
 
+    @State private var loadedCache = false
+
     // MARK: - Computed Properties
 
     private var totalCCU: Int {
@@ -95,13 +97,9 @@ struct ContentView: View {
 
             .task {
 
-                // Only load automatically if
-                // we don't already have data.
+                await loadCachedData()
 
-                if games.isEmpty {
-
-                    await loadGames()
-                }
+                await loadGames()
             }
 
             .refreshable {
@@ -336,5 +334,39 @@ struct ContentView: View {
 
             isLoading = false
         }
+    }
+
+    @MainActor
+    private func loadCachedData() {
+
+        guard !loadedCache else {
+            return
+        }
+
+        loadedCache = true
+
+        let cached =
+            SharedDataStore.shared.load()
+
+        guard !cached.games.isEmpty else {
+            return
+        }
+
+        games =
+            cached.games.map {
+
+                RobloxGame(
+                    id: $0.id,
+                    name: $0.name,
+                    rootPlaceId: nil,
+                    creatorId: nil,
+                    creatorName: nil,
+                    currentCCU:
+                        $0.currentCCU
+                )
+            }
+
+        lastUpdated =
+            cached.updatedAt
     }
 }
