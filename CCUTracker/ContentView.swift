@@ -28,8 +28,7 @@ struct ContentView: View {
         }
     }
 
-    private var sortedGames:
-        [RobloxGame] {
+    private var sortedGames: [RobloxGame] {
 
         games.sorted {
             $0.currentCCU > $1.currentCCU
@@ -92,7 +91,14 @@ struct ContentView: View {
                     $showingSources
             ) {
 
-                SourcesView()
+                SourcesView(
+                    onSourcesChanged: {
+
+                        Task {
+                            await loadGames()
+                        }
+                    }
+                )
             }
 
             .task {
@@ -162,8 +168,7 @@ struct ContentView: View {
                             )
 
                             Text(
-                                "Updated "
-                                + lastUpdated,
+                                lastUpdated,
                                 style: .relative
                             )
                         }
@@ -186,9 +191,7 @@ struct ContentView: View {
 
             }
 
-            Section(
-                "Games"
-            ) {
+            Section("Games") {
 
                 ForEach(
                     sortedGames
@@ -244,7 +247,7 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Error
+    // MARK: - Error View
 
     private func errorView(
         message: String
@@ -287,54 +290,7 @@ struct ContentView: View {
         .padding()
     }
 
-    // MARK: - Load Games
-
-    @MainActor
-    private func loadGames() async {
-
-        guard !isLoading else {
-            return
-        }
-
-        isLoading = true
-
-        errorMessage = nil
-
-        do {
-
-            let discovered =
-                try await
-                    GameDiscoveryService.shared
-                    .discoverGames(
-                        from:
-                            sourceStore.sources
-                    )
-
-            let refreshed =
-                try await
-                    GameDiscoveryService.shared
-                    .refreshCCU(
-                        for: discovered
-                    )
-
-            games = refreshed
-
-            lastUpdated = Date()
-
-            SharedDataStore.shared.save(
-                games: refreshed
-            )
-
-            isLoading = false
-
-        } catch {
-
-            errorMessage =
-                error.localizedDescription
-
-            isLoading = false
-        }
-    }
+    // MARK: - Cached Data
 
     @MainActor
     private func loadCachedData() {
@@ -368,5 +324,55 @@ struct ContentView: View {
 
         lastUpdated =
             cached.updatedAt
+    }
+
+    // MARK: - Load Games
+
+    @MainActor
+    private func loadGames() async {
+
+        guard !isLoading else {
+            return
+        }
+
+        isLoading = true
+
+        errorMessage = nil
+
+        do {
+
+            let discovered =
+                try await
+                    GameDiscoveryService.shared
+                    .discoverGames(
+                        from:
+                            sourceStore.sources
+                    )
+
+            let refreshed =
+                try await
+                    GameDiscoveryService.shared
+                    .refreshCCU(
+                        for:
+                            discovered
+                    )
+
+            games = refreshed
+
+            lastUpdated = Date()
+
+            SharedDataStore.shared.save(
+                games: refreshed
+            )
+
+            isLoading = false
+
+        } catch {
+
+            errorMessage =
+                error.localizedDescription
+
+            isLoading = false
+        }
     }
 }
