@@ -1,82 +1,119 @@
-name: Build iOS App
+name: Test Apple Signing Environment
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
-  build:
+  signing-test:
     runs-on: macos-latest
 
     steps:
 
-      # -----------------------------
-      # Checkout repository
-      # -----------------------------
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
-
-      # -----------------------------
-      # Install XcodeGen
-      # -----------------------------
-
       - name: Install XcodeGen
-        run: brew install xcodegen
-
-
-      # -----------------------------
-      # Generate Xcode project
-      # -----------------------------
+        run: |
+          brew install xcodegen
 
       - name: Generate Xcode project
-        run: xcodegen generate
-
-
-      # -----------------------------
-      # Show Xcode version
-      # -----------------------------
-
-      - name: Show Xcode version
         run: |
-          xcodebuild -version
+          xcodegen generate
 
-
-      # -----------------------------
-      # Check signing environment
-      # -----------------------------
-
-      - name: Check signing environment
+      - name: Show Xcode information
         run: |
           echo "========================================"
-          echo "AVAILABLE CODE SIGNING IDENTITIES"
-          echo "========================================"
-
-          security find-identity -v -p codesigning || true
-
-          echo ""
-          echo "========================================"
-          echo "XCODE INFORMATION"
+          echo "XCODE VERSION"
           echo "========================================"
 
           xcodebuild -version
 
           echo ""
           echo "========================================"
-          echo "DEVELOPER DIRECTORY"
+          echo "XCODE PATH"
           echo "========================================"
 
           xcode-select -p
 
-
-      # -----------------------------
-      # Build iOS app
-      # -----------------------------
-
-      - name: Build project
+      - name: Check runner architecture
         run: |
+          echo "========================================"
+          echo "MAC INFORMATION"
+          echo "========================================"
+
+          uname -a
+
+          echo ""
+          echo "Architecture:"
+          uname -m
+
+          echo ""
+          echo "Mac model:"
+          system_profiler SPHardwareDataType
+
+      - name: Check code signing identities
+        run: |
+          echo "========================================"
+          echo "CODE SIGNING IDENTITIES"
+          echo "========================================"
+
+          security find-identity -v -p codesigning || true
+
+      - name: Check provisioning profiles
+        run: |
+          echo "========================================"
+          echo "PROVISIONING PROFILES"
+          echo "========================================"
+
+          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+
+          if [ -d "$PROFILE_DIR" ]; then
+            echo "Provisioning profile directory exists."
+
+            find "$PROFILE_DIR" \
+              -maxdepth 1 \
+              -type f \
+              -print
+          else
+            echo "No provisioning profile directory exists."
+          fi
+
+      - name: Check Xcode accounts
+        run: |
+          echo "========================================"
+          echo "XCODE ACCOUNT INFORMATION"
+          echo "========================================"
+
+          defaults read com.apple.dt.Xcode IDEProvisioningAccounts 2>/dev/null || \
+            echo "No Xcode provisioning accounts found."
+
+      - name: Check available signing certificates
+        run: |
+          echo "========================================"
+          echo "KEYCHAIN CERTIFICATES"
+          echo "========================================"
+
+          security find-certificate \
+            -a \
+            -p \
+            ~/Library/Keychains/login.keychain-db \
+            2>/dev/null \
+            | openssl x509 -noout -subject 2>/dev/null || true
+
+      - name: Check iOS SDK
+        run: |
+          echo "========================================"
+          echo "AVAILABLE iOS SDK"
+          echo "========================================"
+
+          xcodebuild -showsdks
+
+      - name: Test unsigned project build
+        run: |
+          echo "========================================"
+          echo "TESTING PROJECT BUILD"
+          echo "========================================"
+
           xcodebuild \
             -project RobloxCCUTracker.xcodeproj \
             -scheme CCUTracker \
@@ -84,3 +121,16 @@ jobs:
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
             build
+
+      - name: Summary
+        if: always()
+        run: |
+          echo ""
+          echo "========================================"
+          echo "SIGNING TEST COMPLETE"
+          echo "========================================"
+          echo ""
+          echo "No Apple password was used."
+          echo "No Apple 2FA code was used."
+          echo "No signing credentials were uploaded."
+          echo ""
