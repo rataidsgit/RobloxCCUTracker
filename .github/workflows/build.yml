@@ -1,10 +1,10 @@
-name: Test Apple Signing Environment
+name: Test Apple Developer Tooling
 
 on:
   workflow_dispatch:
 
 jobs:
-  signing-test:
+  developer-tooling-test:
     runs-on: macos-latest
 
     steps:
@@ -12,106 +12,114 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install XcodeGen
-        run: |
-          brew install xcodegen
-
-      - name: Generate Xcode project
-        run: |
-          xcodegen generate
-
-      - name: Show Xcode information
+      - name: Show Xcode version
         run: |
           echo "========================================"
-          echo "XCODE VERSION"
+          echo "XCODE"
           echo "========================================"
 
           xcodebuild -version
 
           echo ""
+          xcode-select -p
+
+      - name: Check Xcode command line tools
+        run: |
           echo "========================================"
-          echo "XCODE PATH"
+          echo "XCODE COMMAND LINE TOOLS"
           echo "========================================"
 
           xcode-select -p
+          xcodebuild -showsdks
 
-      - name: Check runner architecture
+      - name: Check available Xcode signing commands
         run: |
           echo "========================================"
-          echo "MAC INFORMATION"
+          echo "SIGNING TOOLING"
           echo "========================================"
 
-          uname -a
+          echo "codesign:"
+          which codesign
+          codesign --version
 
           echo ""
-          echo "Architecture:"
-          uname -m
+          echo "security:"
+          which security
+          security -h | head -20
 
           echo ""
-          echo "Mac model:"
-          system_profiler SPHardwareDataType
+          echo "xcodebuild:"
+          which xcodebuild
 
-      - name: Check code signing identities
+      - name: Check Xcode provisioning capabilities
         run: |
           echo "========================================"
-          echo "CODE SIGNING IDENTITIES"
+          echo "XCODE PROVISIONING OPTIONS"
           echo "========================================"
 
+          xcodebuild -help | grep -i -E \
+            "signing|provision|team|certificate|export" \
+            || true
+
+      - name: Check local signing state
+        run: |
+          echo "========================================"
+          echo "LOCAL SIGNING STATE"
+          echo "========================================"
+
+          echo "Code signing identities:"
           security find-identity -v -p codesigning || true
 
-      - name: Check provisioning profiles
-        run: |
-          echo "========================================"
-          echo "PROVISIONING PROFILES"
-          echo "========================================"
-
+          echo ""
+          echo "Provisioning profiles:"
           PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
 
           if [ -d "$PROFILE_DIR" ]; then
-            echo "Provisioning profile directory exists."
-
-            find "$PROFILE_DIR" \
-              -maxdepth 1 \
-              -type f \
-              -print
+            find "$PROFILE_DIR" -maxdepth 1 -type f -print
           else
-            echo "No provisioning profile directory exists."
+            echo "None"
           fi
 
-      - name: Check Xcode accounts
+      - name: Check Apple development environment
         run: |
           echo "========================================"
-          echo "XCODE ACCOUNT INFORMATION"
+          echo "DEVELOPMENT ENVIRONMENT"
           echo "========================================"
 
-          defaults read com.apple.dt.Xcode IDEProvisioningAccounts 2>/dev/null || \
-            echo "No Xcode provisioning accounts found."
+          echo "Developer directory:"
+          xcode-select -p
 
-      - name: Check available signing certificates
+          echo ""
+          echo "Mac architecture:"
+          uname -m
+
+          echo ""
+          echo "Available developer tools:"
+          xcodebuild -version
+
+      - name: Generate project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Inspect signing settings
         run: |
           echo "========================================"
-          echo "KEYCHAIN CERTIFICATES"
+          echo "PROJECT SIGNING SETTINGS"
           echo "========================================"
 
-          security find-certificate \
-            -a \
-            -p \
-            ~/Library/Keychains/login.keychain-db \
-            2>/dev/null \
-            | openssl x509 -noout -subject 2>/dev/null || true
+          xcodebuild \
+            -project RobloxCCUTracker.xcodeproj \
+            -scheme CCUTracker \
+            -showBuildSettings \
+            | grep -E \
+              "CODE_SIGN|DEVELOPMENT_TEAM|PROVISIONING|PRODUCT_BUNDLE_IDENTIFIER" \
+            || true
 
-      - name: Check iOS SDK
+      - name: Test unsigned simulator build
         run: |
           echo "========================================"
-          echo "AVAILABLE iOS SDK"
-          echo "========================================"
-
-          xcodebuild -showsdks
-
-      - name: Test unsigned project build
-        run: |
-          echo "========================================"
-          echo "TESTING PROJECT BUILD"
+          echo "BUILD TEST"
           echo "========================================"
 
           xcodebuild \
@@ -122,15 +130,14 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build
 
-      - name: Summary
+      - name: Finish
         if: always()
         run: |
           echo ""
           echo "========================================"
-          echo "SIGNING TEST COMPLETE"
+          echo "TEST COMPLETE"
           echo "========================================"
           echo ""
+          echo "No Apple credentials were supplied."
           echo "No Apple password was used."
-          echo "No Apple 2FA code was used."
-          echo "No signing credentials were uploaded."
-          echo ""
+          echo "No 2FA code was used."
