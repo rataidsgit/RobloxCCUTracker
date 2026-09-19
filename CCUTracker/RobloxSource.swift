@@ -1,9 +1,22 @@
 import Foundation
 
-enum RobloxSourceType: String, Codable {
+enum RobloxSourceType: String, Codable, CaseIterable, Identifiable {
     case user
     case group
     case game
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .user:
+            return "User"
+        case .group:
+            return "Group"
+        case .game:
+            return "Game"
+        }
+    }
 }
 
 struct RobloxSource: Identifiable, Codable, Hashable {
