@@ -1,7 +1,13 @@
 import SwiftUI
+import BackgroundTasks
 
 @main
 struct CCUTrackerApp: App {
+
+    @UIApplicationDelegateAdaptor(
+        AppDelegate.self
+    )
+    private var appDelegate
 
     var body: some Scene {
 
@@ -9,7 +15,6 @@ struct CCUTrackerApp: App {
 
             ContentView()
                 .onOpenURL { url in
-
                     handleURL(url)
                 }
         }
@@ -29,5 +34,32 @@ struct CCUTrackerApp: App {
         //
         // We can later use this to navigate
         // directly to specific screens.
+    }
+}
+
+// MARK: - App Delegate
+
+final class AppDelegate:
+    NSObject,
+    UIApplicationDelegate {
+
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions
+        launchOptions:
+            [UIApplication.LaunchOptionsKey: Any]?
+            = nil
+    ) -> Bool {
+
+        BackgroundRefreshService.shared.register()
+
+        return true
+    }
+
+    func applicationDidEnterBackground(
+        _ application: UIApplication
+    ) {
+
+        BackgroundRefreshService.shared.schedule()
     }
 }

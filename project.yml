@@ -34,6 +34,16 @@ targets:
             </dict>
           </array>
 
+        INFOPLIST_KEY_BGTaskSchedulerPermittedIdentifiers: |
+          <array>
+            <string>com.robloxccutracker.refresh</string>
+          </array>
+
+        INFOPLIST_KEY_UIBackgroundModes: |
+          <array>
+            <string>fetch</string>
+          </array>
+
     CCUTrackerWidget:
     type: app-extension
     platform: iOS
