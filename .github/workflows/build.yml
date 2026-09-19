@@ -19,125 +19,91 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
-      - name: Show Xcode version
+      - name: Show Xcode
         run: |
           echo "========================================"
-          echo "XCODE VERSION"
+          echo "XCODE"
           echo "========================================"
 
           xcodebuild -version
-
-          echo ""
-          echo "========================================"
-          echo "XCODE PATH"
-          echo "========================================"
-
           xcode-select -p
 
-      - name: Check code signing identities
+      - name: Check signing environment
         run: |
           echo "========================================"
-          echo "CODE SIGNING IDENTITIES"
+          echo "SIGNING ENVIRONMENT"
           echo "========================================"
 
+          echo ""
+          echo "Signing identities:"
           security find-identity -v -p codesigning || true
 
           echo ""
-          echo "Raw signing identities:"
-          security find-identity -v -p codesigning \
-            | grep "valid identities found" || true
-
-      - name: Check provisioning profiles
-        run: |
-          echo "========================================"
-          echo "PROVISIONING PROFILES"
-          echo "========================================"
+          echo "Provisioning profiles:"
 
           PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
 
           if [ -d "$PROFILE_DIR" ]; then
-            echo "Provisioning profile directory exists:"
-            echo "$PROFILE_DIR"
-            echo ""
-
-            ls -la "$PROFILE_DIR"
-
-            echo ""
-            echo "Provisioning profiles:"
             find "$PROFILE_DIR" \
               -maxdepth 1 \
               -type f \
               -name "*.mobileprovision" \
               -print || true
           else
-            echo "No provisioning profile directory exists."
+            echo "No provisioning profile directory."
           fi
 
-      - name: Check Xcode account tools
+      - name: Show signing settings
         run: |
           echo "========================================"
-          echo "XCODE ACCOUNT TOOLS"
-          echo "========================================"
-
-          echo "Available Xcode-related commands:"
-          echo ""
-
-          command -v xcodebuild || true
-          command -v xcrun || true
-          command -v xcdevice || true
-
-          echo ""
-          echo "========================================"
-          echo "XCDEVICE HELP"
-          echo "========================================"
-
-          xcrun xcdevice help 2>&1 | head -100 || true
-
-          echo ""
-          echo "========================================"
-          echo "XCODE ACCOUNT-RELATED PREFERENCES"
-          echo "========================================"
-
-          defaults read com.apple.dt.Xcode 2>/dev/null \
-            | grep -i -E "account|team|provision" \
-            | head -100 || true
-
-      - name: Check Xcode provisioning options
-        run: |
-          echo "========================================"
-          echo "XCODE PROVISIONING OPTIONS"
-          echo "========================================"
-
-          xcodebuild -help 2>&1 \
-            | grep -A 20 -B 5 \
-              -E "allowProvisioningUpdates|allowProvisioningDeviceRegistration|authenticationKeyPath|authenticationKeyID|authenticationKeyIssuerID" \
-            || true
-
-      - name: Check project
-        run: |
-          echo "========================================"
-          echo "PROJECT FILES"
-          echo "========================================"
-
-          echo "Generated project:"
-          ls -la RobloxCCUTracker.xcodeproj
-
-          echo ""
-          echo "Available schemes:"
-          xcodebuild \
-            -project RobloxCCUTracker.xcodeproj \
-            -list
-
-      - name: Build project
-        run: |
-          echo "========================================"
-          echo "BUILDING IOS SIMULATOR"
+          echo "PROJECT SIGNING SETTINGS"
           echo "========================================"
 
           xcodebuild \
             -project RobloxCCUTracker.xcodeproj \
             -scheme CCUTracker \
-            -sdk iphonesimulator \
+            -showBuildSettings \
+            | grep -E \
+              "PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|CODE_SIGN|PROVISIONING_PROFILE|CODE_SIGN_IDENTITY" \
+            || true
+
+      - name: Attempt automatic provisioning
+        run: |
+          echo "========================================"
+          echo "ATTEMPTING AUTOMATIC PROVISIONING"
+          echo "========================================"
+
+          xcodebuild \
+            -project RobloxCCUTracker.xcodeproj \
+            -scheme CCUTracker \
+            -sdk iphoneos \
             -configuration Debug \
-            CODE_SIGNING_ALLOWED=NO \
+            -allowProvisioningUpdates \
+            CODE_SIGN_STYLE=Automatic \
             build
+
+      - name: Check signing results
+        if: always()
+        run: |
+          echo "========================================"
+          echo "SIGNING RESULTS"
+          echo "========================================"
+
+          echo ""
+          echo "Signing identities:"
+          security find-identity -v -p codesigning || true
+
+          echo ""
+          echo "Provisioning profiles:"
+
+          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+
+          if [ -d "$PROFILE_DIR" ]; then
+            find "$PROFILE_DIR" \
+              -maxdepth 1 \
+              -type f \
+              -name "*.mobileprovision" \
+              -print || true
+          else
+            echo "No provisioning profiles."
+          fi
