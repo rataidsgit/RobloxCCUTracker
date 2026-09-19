@@ -1,4 +1,5 @@
 import Foundation
+import WidgetKit
 
 struct SharedGame: Codable, Identifiable {
     let id: Int
@@ -72,5 +73,9 @@ final class SharedDataStore {
                 error
             )
         }
+
+        WidgetCenter.shared.reloadTimelines(
+            ofKind: "CCUTrackerWidget"
+        )
     }
 }
