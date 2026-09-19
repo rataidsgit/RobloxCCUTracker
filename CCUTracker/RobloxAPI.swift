@@ -10,115 +10,192 @@ final class RobloxAPI {
 
     // MARK: - User Games
 
-    func getUserGames(userID: Int) async throws -> [RobloxGame] {
+    func getAllUserGames(userID: Int) async throws -> [RobloxGame] {
+        var games: [RobloxGame] = []
+        var cursor: String?
 
-        let url = URL(
-            string: "https://games.roblox.com/v2/users/\(userID)/games"
-        )!
+        repeat {
+            var components = URLComponents(
+                string: "https://games.roblox.com/v2/users/\(userID)/games"
+            )!
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
+            var queryItems = [
+                URLQueryItem(name: "sortOrder", value: "Asc"),
+                URLQueryItem(name: "limit", value: "50")
+            ]
 
-        let (data, response) = try await session.data(for: request)
+            if let cursor {
+                queryItems.append(
+                    URLQueryItem(name: "cursor", value: cursor)
+                )
+            }
 
-        try validate(response)
+            components.queryItems = queryItems
 
-        let result = try JSONDecoder().decode(
-            RobloxGameListResponse.self,
-            from: data
-        )
+            let response: RobloxPagedGameResponse =
+                try await get(components.url!)
 
-        return result.data.map {
-            RobloxGame(
-                id: $0.id,
-                name: $0.name,
-                rootPlaceId: $0.rootPlaceId,
-                creatorId: $0.creator?.id,
-                creatorName: $0.creator?.name
-            )
-        }
+            games.append(contentsOf: response.data)
+            cursor = response.nextPageCursor
+
+        } while cursor != nil
+
+        return games.map { $0.asGame }
     }
 
     // MARK: - Group Games
 
-    func getGroupGames(groupID: Int) async throws -> [RobloxGame] {
+    func getAllGroupGames(groupID: Int) async throws -> [RobloxGame] {
+        var games: [RobloxGame] = []
+        var cursor: String?
 
-        let url = URL(
-            string: "https://games.roblox.com/v2/groups/\(groupID)/games"
-        )!
+        repeat {
+            var components = URLComponents(
+                string: "https://games.roblox.com/v2/groups/\(groupID)/games"
+            )!
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
+            var queryItems = [
+                URLQueryItem(name: "sortOrder", value: "Asc"),
+                URLQueryItem(name: "limit", value: "50")
+            ]
 
-        let (data, response) = try await session.data(for: request)
+            if let cursor {
+                queryItems.append(
+                    URLQueryItem(name: "cursor", value: cursor)
+                )
+            }
 
-        try validate(response)
+            components.queryItems = queryItems
 
-        let result = try JSONDecoder().decode(
-            RobloxGameListResponse.self,
-            from: data
-        )
+            let response: RobloxPagedGameResponse =
+                try await get(components.url!)
 
-        return result.data.map {
-            RobloxGame(
-                id: $0.id,
-                name: $0.name,
-                rootPlaceId: $0.rootPlaceId,
-                creatorId: $0.creator?.id,
-                creatorName: $0.creator?.name
-            )
-        }
+            games.append(contentsOf: response.data)
+            cursor = response.nextPageCursor
+
+        } while cursor != nil
+
+        return games.map { $0.asGame }
     }
 
     // MARK: - Individual Game
 
     func getGame(universeID: Int) async throws -> RobloxGame {
+        let url = URL(
+            string:
+                "https://games.roblox.com/v1/games?universeIds=\(universeID)"
+        )!
+
+        let response: RobloxGameListResponse =
+            try await get(url)
+
+        guard let game = response.data.first else {
+            throw RobloxAPIError.gameNotFound
+        }
+
+        return game.asGame
+    }
+
+    // MARK: - Current CCU
+
+    func getCCU(universeID: Int) async throws -> Int {
+        let url = URL(
+            string:
+                "https://games.roblox.com/v1/games?universeIds=\(universeID)"
+        )!
+
+        let response: RobloxGameListResponse =
+            try await get(url)
+
+        guard let game = response.data.first else {
+            throw RobloxAPIError.gameNotFound
+        }
+
+        return game.playing ?? 0
+    }
+
+    // MARK: - Multiple CCUs
+
+    func getCCUs(
+        universeIDs: [Int]
+    ) async throws -> [Int: Int] {
+
+        guard !universeIDs.isEmpty else {
+            return [:]
+        }
+
+        let ids = universeIDs
+            .map(String.init)
+            .joined(separator: ",")
 
         let url = URL(
-            string: "https://games.roblox.com/v1/games?universeIds=\(universeID)"
+            string:
+                "https://games.roblox.com/v1/games?universeIds=\(ids)"
         )!
+
+        let response: RobloxGameListResponse =
+            try await get(url)
+
+        var result: [Int: Int] = [:]
+
+        for game in response.data {
+            result[game.id] = game.playing ?? 0
+        }
+
+        return result
+    }
+
+    // MARK: - Generic GET
+
+    private func get<T: Decodable>(
+        _ url: URL
+    ) async throws -> T {
 
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
 
-        let (data, response) = try await session.data(for: request)
+        let (data, response) =
+            try await session.data(for: request)
 
         try validate(response)
 
-        let result = try JSONDecoder().decode(
-            RobloxGameListResponse.self,
+        return try JSONDecoder().decode(
+            T.self,
             from: data
-        )
-
-        guard let game = result.data.first else {
-            throw RobloxAPIError.gameNotFound
-        }
-
-        return RobloxGame(
-            id: game.id,
-            name: game.name,
-            rootPlaceId: game.rootPlaceId,
-            creatorId: game.creator?.id,
-            creatorName: game.creator?.name
         )
     }
 
-    // MARK: - Helpers
+    // MARK: - Validation
 
-    private func validate(_ response: URLResponse) throws {
+    private func validate(
+        _ response: URLResponse
+    ) throws {
 
-        guard let httpResponse = response as? HTTPURLResponse else {
+        guard let httpResponse =
+                response as? HTTPURLResponse
+        else {
             throw RobloxAPIError.invalidResponse
         }
 
-        guard (200...299).contains(httpResponse.statusCode) else {
-            throw RobloxAPIError.httpError(httpResponse.statusCode)
+        guard (200...299).contains(
+            httpResponse.statusCode
+        ) else {
+            throw RobloxAPIError.httpError(
+                httpResponse.statusCode
+            )
         }
     }
 }
 
 
-// MARK: - Response Models
+// MARK: - API Responses
+
+private struct RobloxPagedGameResponse: Codable {
+
+    let previousPageCursor: String?
+    let nextPageCursor: String?
+    let data: [RobloxGameResponse]
+}
 
 private struct RobloxGameListResponse: Codable {
 
@@ -130,7 +207,19 @@ private struct RobloxGameResponse: Codable {
     let id: Int
     let name: String
     let rootPlaceId: Int?
+    let playing: Int?
     let creator: RobloxCreatorResponse?
+
+    var asGame: RobloxGame {
+        RobloxGame(
+            id: id,
+            name: name,
+            rootPlaceId: rootPlaceId,
+            creatorId: creator?.id,
+            creatorName: creator?.name,
+            currentCCU: playing ?? 0
+        )
+    }
 }
 
 private struct RobloxCreatorResponse: Codable {
